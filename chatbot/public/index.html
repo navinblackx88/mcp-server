@@ -290,7 +290,7 @@ document.addEventListener('drop', (e) => {
 fetch('/api/status').then((r) => r.json()).then((s) => {
   const b = $('#model');
   b.textContent = s.provider === 'rules' ? 'offline rules mode — no LLM' : `${s.provider} · ${s.model}`;
-  if (s.provider === 'rules') { b.classList.add('offline'); b.title = 'Set ANTHROPIC_API_KEY, OPENAI_API_KEY or LLM_PROVIDER=ollama'; }
+  if (s.provider === 'rules') { b.classList.add('offline'); b.title = s.warning || 'Set GEMINI_API_KEY, ANTHROPIC_API_KEY, OPENAI_API_KEY or LLM_PROVIDER=ollama'; }
 }).catch(() => { $('#model').textContent = 'server offline'; });
 </script>
 </body>

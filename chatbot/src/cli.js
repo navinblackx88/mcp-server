@@ -3,14 +3,15 @@
 import readline from 'node:readline';
 import { Agent } from './agent.js';
 import { config } from './config.js';
-import { createProvider } from './llm/index.js';
+import { createProviderSafe } from './llm/index.js';
 import { connectMcp } from './mcp.js';
 
 const tty = process.stdout.isTTY && !process.env.NO_COLOR;
 const paint = (code) => (s) => (tty ? `\x1b[${code}m${s}\x1b[0m` : s);
 const dim = paint(2), cyan = paint(36), red = paint(31), bold = paint(1);
 
-const provider = createProvider(config);
+const { provider, warning: providerWarning } = createProviderSafe(config);
+if (providerWarning) console.warn(providerWarning);
 const mcp = await connectMcp();
 const agent = new Agent({ provider, mcp, maxToolRounds: config.maxToolRounds, maxHistoryMessages: config.maxHistoryMessages });
 const SESSION = 'cli';
