@@ -25,7 +25,7 @@ const urlFromParts = (host, port) => `http://${host.includes(':') ? `[${host}]` 
 export const config = {
   port: Number(env.CHATBOT_PORT || env.PORT || 3000),
   // Locally 127.0.0.1; in Docker/Railway set HOST=:: (IPv4 + IPv6).
-  host: env.CHATBOT_HOST || env.HOST || '127.0.0.1',
+  host: env.CHATBOT_HOST || env.HOST || (env.RAILWAY_ENVIRONMENT || env.RAILWAY_ENVIRONMENT_NAME || env.RAILWAY_SERVICE_NAME ? '::' : '127.0.0.1'),
   // Optional login for the whole site (HTTP Basic auth). Strongly recommended on a public URL.
   password: env.CHATBOT_PASSWORD || '',
   username: env.CHATBOT_USERNAME || 'admin',

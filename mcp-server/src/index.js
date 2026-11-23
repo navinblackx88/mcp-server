@@ -27,7 +27,7 @@ if (transportMode === 'stdio') {
 
 function startHttp() {
   const port = Number(env.MCP_PORT || env.PORT || 8080);
-  const host = env.HOST || '127.0.0.1';
+  const host = env.HOST || (env.RAILWAY_ENVIRONMENT || env.RAILWAY_ENVIRONMENT_NAME || env.RAILWAY_SERVICE_NAME ? '::' : '127.0.0.1');
   const token = env.MCP_AUTH_TOKEN || '';
 
   const app = express();

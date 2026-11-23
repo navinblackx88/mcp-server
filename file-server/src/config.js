@@ -23,7 +23,7 @@ export const config = {
   // FILE_SERVER_PORT wins so the file server can share a container with another app.
   port: Number(env.FILE_SERVER_PORT || env.PORT || 4000),
   // Locally: 127.0.0.1 only (this server can read your files). In Docker/Railway: HOST=:: (IPv4 + IPv6).
-  host: env.HOST || '127.0.0.1',
+  host: env.HOST || (env.RAILWAY_ENVIRONMENT || env.RAILWAY_ENVIRONMENT_NAME || env.RAILWAY_SERVICE_NAME ? '::' : '127.0.0.1'),
   // Optional shared secret. When set, every request except /health needs "Authorization: Bearer <token>".
   token: env.FILE_SERVER_TOKEN || '',
   dataDir: dataDir ? path.resolve(dataDir) : '',

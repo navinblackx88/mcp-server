@@ -132,6 +132,7 @@ railway up --service file-server && railway up --service mcp-server && railway u
 - **Replicas:** keep the chatbot at 1 replica (conversations are kept in memory) and the file server at 1 (a volume attaches to one service). The MCP server is stateless and can scale.
 - **Using the MCP server from other clients** (Claude Desktop, your own agents): give **mcp-server** a public domain, keep `MCP_AUTH_TOKEN` set, and connect to `https://<domain>/mcp` with `Authorization: Bearer <token>`. The CLI client works too: `MCP_SERVER_URL=https://<domain>/mcp MCP_AUTH_TOKEN=… npm run client -- info`.
 - **"Railpack process exited with an error":** Railway didn't find a Dockerfile and fell back to its automatic builder. Make sure **Root Directory** is empty, so Railway sees the root `Dockerfile`. If Railpack is still used, the root `npm start` (`start.js`) makes that build work as well.
+- **502 / "Application failed to respond":** the domain's port must match the app's. The deploy log prints `[start] listening port: NNNN`. Use that number under Settings → Networking → your domain → port. The app always listens on all interfaces (`::`), never only on localhost.
 - **IPv6:** the services listen on `::` (IPv4 + IPv6), as Railway's private network requires, and fall back to `0.0.0.0` on machines without IPv6.
 
 ### Run the same setup locally with Docker
