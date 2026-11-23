@@ -42,7 +42,7 @@ const app = express();
 app.disable('x-powered-by');
 if (config.trustProxy) app.set('trust proxy', true); // Railway's edge proxy sets X-Forwarded-For
 
-const health = (_req, res) => res.json({ status: 'ok', mcp: mcp ? 'ready' : 'connecting' });
+const health = (_req, res) => res.json({ status: 'ok', service: 'chatbot', mcp: mcp ? 'ready' : 'connecting' });
 app.get('/api/health', health);
 app.get('/health', health); // same path as the other services, for one shared health check
 

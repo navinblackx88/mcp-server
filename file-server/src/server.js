@@ -57,7 +57,8 @@ function searchDoc(doc, query, caseSensitive, limit) {
   return matches;
 }
 
-app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'file-server' }));
+app.get('/', (_req, res) => res.type('html').send(`<!doctype html><meta charset="utf-8"><title>file server</title><body style="font:16px system-ui;max-width:640px;margin:10vh auto;padding:0 20px;line-height:1.5"><h1 style="font-size:22px">This is the file server, not the chatbot</h1><p>It reads files for the MCP server over a private API and has no web page.</p><p>The chat page is served by the <b>chatbot</b>. On Railway, either generate the public domain on the <b>chatbot</b> service, or deploy one service in all-in-one mode by setting the variable <code>SERVICE=all-in-one</code> on it.</p><p style="color:#777">Health: <a href="/health">/health</a></p></body>`));
 
 app.use(requireToken); // everything below needs the token (if one is configured)
 

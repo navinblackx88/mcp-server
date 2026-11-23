@@ -34,7 +34,8 @@ function startHttp() {
   app.disable('x-powered-by');
   app.use(express.json({ limit: '4mb' }));
 
-  app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+  app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'mcp-server' }));
+  app.get('/', (_req, res) => res.type('html').send(`<!doctype html><meta charset="utf-8"><title>MCP server</title><body style="font:16px system-ui;max-width:640px;margin:10vh auto;padding:0 20px;line-height:1.5"><h1 style="font-size:22px">This is the MCP server, not the chatbot</h1><p>It serves MCP tools at <code>POST /mcp</code> for the chatbot and other MCP clients, and has no web page.</p><p>The chat page is served by the <b>chatbot</b>. On Railway, either generate the public domain on the <b>chatbot</b> service, or deploy one service in all-in-one mode by setting the variable <code>SERVICE=all-in-one</code> on it.</p><p style="color:#777">Health: <a href="/health">/health</a></p></body>`));
 
   const auth = (req, res, next) => {
     if (!token) return next();
