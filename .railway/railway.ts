@@ -24,13 +24,13 @@ const FILE_SERVER_PORT = "4000";
 const MCP_SERVER_PORT = "8080";
 const CHATBOT_PORT = "3000";
 
-// Every service builds its own Dockerfile from the repository root (they share package-lock.json).
+// All services build the same root Dockerfile; the SERVICE variable picks what runs (see start.js).
 // Watch patterns stop, say, a chatbot UI change from redeploying the file server.
 function dockerBuild(dir: string, alsoWatch: string[] = []) {
   return {
     builder: "DOCKERFILE" as const,
-    dockerfilePath: `${dir}/Dockerfile`,
-    watchPatterns: [`${dir}/**`, "package.json", "package-lock.json", ...alsoWatch],
+    dockerfilePath: "Dockerfile",
+    watchPatterns: [`${dir}/**`, "Dockerfile", "start.js", "package.json", "package-lock.json", ...alsoWatch],
   };
 }
 
@@ -59,7 +59,7 @@ export default defineRailway((ctx) => {
       HOST: "::",
       DATA_DIR: "/data",
       MAX_FILE_MB: "50",
-      RAILWAY_DOCKERFILE_PATH: "file-server/Dockerfile",
+      SERVICE: "file-server",
       // Shared secret for service-to-service calls. Set it once (see README); others reference it.
       FILE_SERVER_TOKEN: preserve(),
     },
@@ -73,7 +73,7 @@ export default defineRailway((ctx) => {
       PORT: MCP_SERVER_PORT,
       HOST: "::",
       MCP_TRANSPORT: "http",
-      RAILWAY_DOCKERFILE_PATH: "mcp-server/Dockerfile",
+      SERVICE: "mcp-server",
       FILE_SERVER_HOST: fileServer.env.RAILWAY_PRIVATE_DOMAIN,
       FILE_SERVER_PORT: FILE_SERVER_PORT,
       FILE_SERVER_TOKEN: fileServer.env.FILE_SERVER_TOKEN,
@@ -85,11 +85,11 @@ export default defineRailway((ctx) => {
   const chatbot = service("chatbot", {
     source,
     build: dockerBuild("chatbot", ["mcp-server/**"]),
-    deploy: deploy("/api/health"),
+    deploy: deploy("/health"),
     env: {
       PORT: CHATBOT_PORT,
       HOST: "::",
-      RAILWAY_DOCKERFILE_PATH: "chatbot/Dockerfile",
+      SERVICE: "chatbot",
       MCP_SERVER_HOST: mcpServer.env.RAILWAY_PRIVATE_DOMAIN,
       MCP_SERVER_PORT: MCP_SERVER_PORT,
       MCP_AUTH_TOKEN: mcpServer.env.MCP_AUTH_TOKEN,

@@ -1,9 +1,10 @@
-# Runs the same three-service setup as Railway, locally:  cp .env.example .env && docker compose up --build
+# Runs the same three-service setup as Railway, locally (one image, SERVICE picks the role):  cp .env.example .env && docker compose up --build
 # Chat at http://localhost:3000 (user "admin", password from CHATBOT_PASSWORD).
 services:
   file-server:
-    build: { context: ., dockerfile: file-server/Dockerfile }
+    build: .
     environment:
+      SERVICE: file-server
       PORT: "4000"
       DATA_DIR: /data
       MAX_FILE_MB: "50"
@@ -12,8 +13,9 @@ services:
     restart: on-failure
 
   mcp-server:
-    build: { context: ., dockerfile: mcp-server/Dockerfile }
+    build: .
     environment:
+      SERVICE: mcp-server
       PORT: "8080"
       MCP_TRANSPORT: http
       FILE_SERVER_HOST: file-server
@@ -23,9 +25,10 @@ services:
     restart: on-failure
 
   chatbot:
-    build: { context: ., dockerfile: chatbot/Dockerfile }
+    build: .
     ports: ["3000:3000"]
     environment:
+      SERVICE: chatbot
       PORT: "3000"
       MCP_SERVER_HOST: mcp-server
       MCP_SERVER_PORT: "8080"

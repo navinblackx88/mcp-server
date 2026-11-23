@@ -52,11 +52,31 @@ Internet ──https──▶ chatbot ──private──▶ mcp-server ──pr
                   login + rate limit)   bearer token)            uploads + samples)
 ```
 
-Three Railway services, each built from its own Dockerfile at the repository root. Only the chatbot is public. The other two talk over Railway's private network (`<service>.railway.internal`). Files live on a Railway volume mounted at `/data`; on first boot it's seeded with the sample files, and files you upload in the chat (📎 button or drag-and-drop) go to `/data/uploads`.
+One `Dockerfile` at the repository root builds a single image for everything. Railway picks it up automatically. `start.js` decides what the container runs:
+
+| Railway service name (or `SERVICE` variable) | Runs |
+|---|---|
+| `file-server`, `mcp-server` or `chatbot` | just that service (three-service setup) |
+| anything else, e.g. `mcp-file-reader` | **all-in-one**: chatbot + MCP server + file server in one container |
+
+Files live on a Railway volume mounted at `/data`. On first boot it's seeded with the sample files, and files you upload in the chat (📎 button or drag-and-drop) go to `/data/uploads`.
+
+### Quickest: one service, all-in-one
+
+1. Railway → **New Project** → **Deploy from GitHub repo** → pick this repo. Leave **Root Directory** empty.
+2. The service → **Variables**: `CHATBOT_PASSWORD=…` and `ANTHROPIC_API_KEY=…` (or `OPENAI_API_KEY`).
+3. Right-click the service → **Attach volume**, mount path `/data` (without it, uploads are lost on every redeploy).
+4. Settings → Networking → **Generate Domain**. Health check path: `/health`.
+
+The file server stays on `127.0.0.1` inside the container, and the chatbot runs the MCP server itself over stdio. Only the chat page is reachable.
+
+### Three separate services
+
+Only the chatbot is public. The MCP server and the file server talk over Railway's private network (`<service>.railway.internal`), protected by tokens.
 
 > Railway's old `railway.json` / `railway.toml` setup is deprecated (new services can't use it, and it stops working on 2026-12-01). This project uses its replacement, **Infrastructure as Code** in `.railway/railway.ts`.
 
-### Option A: Infrastructure as Code (recommended)
+#### With Infrastructure as Code (recommended for three services)
 
 Needs Railway CLI 5.42.1 or newer (`npm i -g @railway/cli` or `brew install railway`), and the repo pushed to GitHub with Railway's GitHub app allowed to access it.
 
@@ -87,14 +107,14 @@ Open the URL and log in as `admin` with your `CHATBOT_PASSWORD`. Later `railway 
 railway up --service file-server && railway up --service mcp-server && railway up --service chatbot
 ```
 
-### Option B: Dashboard only
+#### With the dashboard only
 
-1. New project → **Deploy from GitHub repo** → pick this repo. Do it three times (or duplicate the service) and name the services `file-server`, `mcp-server` and `chatbot`. Leave **Root Directory** empty for all three.
+1. New project → **Deploy from GitHub repo** → pick this repo. Do it three times (or duplicate the service) and name the services `file-server`, `mcp-server` and `chatbot`. Leave **Root Directory** empty for all three. The service name selects the role; you can also set `SERVICE` explicitly.
 2. Variables for each service (the `${{…}}` references are typed exactly like this in Railway):
 
 | file-server | mcp-server | chatbot |
 |---|---|---|
-| `RAILWAY_DOCKERFILE_PATH=file-server/Dockerfile` | `RAILWAY_DOCKERFILE_PATH=mcp-server/Dockerfile` | `RAILWAY_DOCKERFILE_PATH=chatbot/Dockerfile` |
+| `SERVICE=file-server` | `SERVICE=mcp-server` | `SERVICE=chatbot` |
 | `PORT=4000` | `PORT=8080` | `PORT=3000` |
 | `DATA_DIR=/data` | `MCP_TRANSPORT=http` | `MCP_SERVER_URL=http://${{mcp-server.RAILWAY_PRIVATE_DOMAIN}}:8080/mcp` |
 | `FILE_SERVER_TOKEN=<random>` | `FILE_SERVER_URL=http://${{file-server.RAILWAY_PRIVATE_DOMAIN}}:4000` | `MCP_AUTH_TOKEN=${{mcp-server.MCP_AUTH_TOKEN}}` |
@@ -103,7 +123,7 @@ railway up --service file-server && railway up --service mcp-server && railway u
 | | | `CHATBOT_PASSWORD`, `ANTHROPIC_API_KEY` (or `OPENAI_API_KEY`) |
 
 3. **file-server** → right-click → **Attach volume**, mount path `/data`.
-4. **chatbot** → Settings → Networking → **Generate Domain**. Health check paths: `/health` (file-server, mcp-server) and `/api/health` (chatbot).
+4. **chatbot** → Settings → Networking → **Generate Domain**. Health check path for all three: `/health`.
 
 ### Good to know
 
@@ -111,6 +131,7 @@ railway up --service file-server && railway up --service mcp-server && railway u
 - **Security:** set `CHATBOT_PASSWORD` (anyone with the URL could otherwise use your LLM key) and both tokens. Chat messages are limited to `RATE_LIMIT_PER_MIN` (20) per IP. Uploads are size-limited (`MAX_UPLOAD_MB`, 50) and saved under safe names, never overwriting.
 - **Replicas:** keep the chatbot at 1 replica (conversations are kept in memory) and the file server at 1 (a volume attaches to one service). The MCP server is stateless and can scale.
 - **Using the MCP server from other clients** (Claude Desktop, your own agents): give **mcp-server** a public domain, keep `MCP_AUTH_TOKEN` set, and connect to `https://<domain>/mcp` with `Authorization: Bearer <token>`. The CLI client works too: `MCP_SERVER_URL=https://<domain>/mcp MCP_AUTH_TOKEN=… npm run client -- info`.
+- **"Railpack process exited with an error":** Railway didn't find a Dockerfile and fell back to its automatic builder. Make sure **Root Directory** is empty, so Railway sees the root `Dockerfile`. If Railpack is still used, the root `npm start` (`start.js`) makes that build work as well.
 - **IPv6:** the services listen on `::` (IPv4 + IPv6), as Railway's private network requires, and fall back to `0.0.0.0` on machines without IPv6.
 
 ### Run the same setup locally with Docker
@@ -261,7 +282,8 @@ mcp-file-reader/
 │       ├── pdf.js  word.js  spreadsheet.js  presentation.js  documents.js  text.js  util.js
 ├── .railway/railway.ts      Railway Infrastructure as Code (3 services + volume); inspect.mjs previews it
 ├── docker-compose.yml       same 3-service setup locally
-├── */Dockerfile             one per service, built from the repo root
+├── Dockerfile               one image for every service (Railway uses it automatically)
+├── start.js                 picks the service to run: SERVICE / RAILWAY_SERVICE_NAME, else all-in-one
 ├── mcp-server/src/
 │   ├── index.js             entry point: stdio or Streamable HTTP (MCP_TRANSPORT=http)
 │   └── tools.js             MCP tools → HTTP calls to the file server
