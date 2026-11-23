@@ -1,0 +1,28 @@
+{
+  "name": "mcp-file-reader",
+  "version": "3.0.0",
+  "private": true,
+  "description": "Client App -> MCP Server -> File-Reading Server -> Local Files",
+  "type": "module",
+  "workspaces": [
+    "file-server",
+    "mcp-server",
+    "client",
+    "chatbot"
+  ],
+  "scripts": {
+    "start:file-server": "npm run start -w file-server",
+    "client": "npm run start -w client --",
+    "demo": "npm run demo -w client",
+    "chatbot": "npm run start -w chatbot",
+    "chatbot:cli": "npm run cli -w chatbot",
+    "railway:check": "tsc -p .railway && node .railway/inspect.mjs"
+  },
+  "devDependencies": {
+    "railway": "^3.17.0",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=20.12"
+  }
+}

@@ -1,0 +1,45 @@
+# Runs the same three-service setup as Railway, locally:  cp .env.example .env && docker compose up --build
+# Chat at http://localhost:3000 (user "admin", password from CHATBOT_PASSWORD).
+services:
+  file-server:
+    build: { context: ., dockerfile: file-server/Dockerfile }
+    environment:
+      PORT: "4000"
+      DATA_DIR: /data
+      MAX_FILE_MB: "50"
+      FILE_SERVER_TOKEN: ${FILE_SERVER_TOKEN:?set FILE_SERVER_TOKEN in .env}
+    volumes: [file-data:/data]
+    restart: on-failure
+
+  mcp-server:
+    build: { context: ., dockerfile: mcp-server/Dockerfile }
+    environment:
+      PORT: "8080"
+      MCP_TRANSPORT: http
+      FILE_SERVER_HOST: file-server
+      FILE_SERVER_PORT: "4000"
+      FILE_SERVER_TOKEN: ${FILE_SERVER_TOKEN}
+      MCP_AUTH_TOKEN: ${MCP_AUTH_TOKEN:?set MCP_AUTH_TOKEN in .env}
+    restart: on-failure
+
+  chatbot:
+    build: { context: ., dockerfile: chatbot/Dockerfile }
+    ports: ["3000:3000"]
+    environment:
+      PORT: "3000"
+      MCP_SERVER_HOST: mcp-server
+      MCP_SERVER_PORT: "8080"
+      MCP_AUTH_TOKEN: ${MCP_AUTH_TOKEN}
+      FILE_SERVER_HOST: file-server
+      FILE_SERVER_PORT: "4000"
+      FILE_SERVER_TOKEN: ${FILE_SERVER_TOKEN}
+      CHATBOT_PASSWORD: ${CHATBOT_PASSWORD:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      LLM_PROVIDER: ${LLM_PROVIDER:-}
+      LLM_MODEL: ${LLM_MODEL:-}
+    depends_on: [mcp-server, file-server]
+    restart: on-failure
+
+volumes:
+  file-data:

@@ -1,0 +1,9 @@
+Project Notes: File Reader over MCP
+
+This project demonstrates a three-tier flow. A client application talks to an MCP server, which forwards requests to a file-reading server.
+
+The file-reading server is the only component that touches the disk. It is sandboxed to a single base directory and rejects path traversal.
+
+The MCP server exposes tools such as get_file_details and extract_text. Any MCP-compatible client, including Claude Desktop, can use them.
+
+Paragraphs are separated by blank lines. Pages in plain-text files are virtual: every 40 lines form one page unless form-feed characters are present.

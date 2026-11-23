@@ -1,0 +1,9 @@
+**/node_modules
+**/.env
+**/.env.*
+!**/.env.example
+*.zip
+.git
+.railway/node_modules
+**/*.log
+**/.DS_Store

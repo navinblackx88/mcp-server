@@ -1,0 +1,14 @@
+{
+  "name": "client",
+  "version": "3.0.0",
+  "description": "CLI client that calls the MCP server tools and displays results",
+  "type": "module",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "demo": "node src/app.js demo"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.0"
+  }
+}

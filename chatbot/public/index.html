@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>File Chat</title>
+<style>
+  :root {
+    --bg: #f6f5f1; --panel: #ffffff; --ink: #1d1d1b; --muted: #6b6a65; --line: #e4e2db;
+    --accent: #2f5d50; --accent-ink: #ffffff; --user: #e7efe9; --tool: #f1efe8; --err: #a33a2c;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #161615; --panel: #1f1f1d; --ink: #ecebe6; --muted: #9a998f; --line: #34332f;
+      --accent: #7fb8a4; --accent-ink: #10201b; --user: #24322d; --tool: #272724; --err: #f08b7b; }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body { background: var(--bg); color: var(--ink); font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; display: flex; flex-direction: column; }
+  header { display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  header h1 { font-size: 16px; margin: 0; font-weight: 650; letter-spacing: -0.01em; }
+  .badge { font: 12px var(--mono); color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; }
+  .badge.offline { color: var(--err); border-color: currentColor; }
+  header .spacer { flex: 1; }
+  button { font: inherit; cursor: pointer; }
+  .ghost { background: none; border: 1px solid var(--line); color: var(--ink); border-radius: 8px; padding: 6px 12px; }
+  .ghost:hover { border-color: var(--muted); }
+  main { flex: 1; overflow-y: auto; }
+  #log { max-width: 820px; margin: 0 auto; padding: 24px 20px 12px; display: flex; flex-direction: column; gap: 14px; }
+  .msg { max-width: 100%; }
+  .msg.user { align-self: flex-end; background: var(--user); padding: 10px 14px; border-radius: 14px 14px 4px 14px; white-space: pre-wrap; max-width: 80%; }
+  .msg.bot { align-self: stretch; }
+  .msg.bot .body { overflow-wrap: anywhere; }
+  .msg.bot .body > :first-child { margin-top: 0; } .msg.bot .body > :last-child { margin-bottom: 0; }
+  .msg.error { color: var(--err); }
+  .tools { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+  details.tool { background: var(--tool); border-radius: 8px; font: 12.5px var(--mono); }
+  details.tool summary { padding: 5px 10px; cursor: pointer; color: var(--muted); list-style: none; display: flex; gap: 8px; align-items: center; }
+  details.tool summary::-webkit-details-marker { display: none; }
+  details.tool .status { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; animation: pulse 1s infinite alternate; }
+  details.tool.ok .status { background: var(--accent); animation: none; }
+  details.tool.fail .status { background: var(--err); animation: none; }
+  details.tool pre { margin: 0; padding: 6px 10px 10px; white-space: pre-wrap; max-height: 220px; overflow: auto; color: var(--ink); }
+  @keyframes pulse { to { opacity: .3; } }
+  .thinking { color: var(--muted); font-size: 14px; }
+  .thinking::after { content: '…'; animation: pulse 1s infinite alternate; }
+  .body pre { background: var(--tool); padding: 10px 12px; border-radius: 8px; overflow-x: auto; font: 13px/1.45 var(--mono); }
+  .body code { font: 0.92em var(--mono); background: var(--tool); padding: 1px 5px; border-radius: 4px; }
+  .body pre code { background: none; padding: 0; }
+  .body table { border-collapse: collapse; margin: 8px 0; font-size: 14px; display: block; overflow-x: auto; }
+  .body th, .body td { border: 1px solid var(--line); padding: 4px 10px; text-align: left; }
+  .body th { background: var(--tool); }
+  .body h1, .body h2, .body h3 { font-size: 1.05em; margin: 1em 0 .4em; }
+  .body ul, .body ol { padding-left: 1.4em; }
+  #empty { text-align: center; color: var(--muted); padding-top: 12vh; }
+  #empty h2 { color: var(--ink); font-size: 22px; font-weight: 650; margin: 0 0 6px; letter-spacing: -0.02em; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 22px; }
+  .chip { background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 7px 14px; color: var(--ink); font-size: 14px; }
+  .chip:hover { border-color: var(--accent); }
+  footer { padding: 12px 20px 18px; }
+  form { max-width: 820px; margin: 0 auto; display: flex; gap: 8px; align-items: flex-end; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 8px; }
+  form:focus-within { border-color: var(--accent); }
+  textarea { flex: 1; border: 0; outline: 0; resize: none; background: transparent; color: var(--ink); font: inherit; padding: 6px 8px; max-height: 200px; }
+  #send { background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 10px; padding: 8px 16px; font-weight: 600; }
+  #send:disabled { opacity: .45; cursor: default; }
+  .hint { max-width: 820px; margin: 6px auto 0; font-size: 12px; color: var(--muted); text-align: center; }
+  #attach { background: none; border: 0; color: var(--muted); border-radius: 10px; padding: 8px 10px; font-size: 18px; line-height: 1; }
+  #attach:hover { color: var(--ink); background: var(--tool); }
+  .msg.note { align-self: center; font-size: 13px; color: var(--muted); background: var(--tool); border-radius: 999px; padding: 4px 12px; }
+  .msg.note.error { color: var(--err); }
+  body.dragging main { outline: 2px dashed var(--accent); outline-offset: -10px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>File Chat</h1>
+  <span id="model" class="badge">connecting…</span>
+  <span class="spacer"></span>
+  <button id="reset" class="ghost" type="button">New chat</button>
+</header>
+
+<main id="scroller">
+  <div id="log">
+    <div id="empty">
+      <h2>Ask about your files</h2>
+      <div>PDF, Word, Excel, PowerPoint, OpenDocument, RTF, HTML, EPUB, CSV, Markdown, code…</div>
+      <div class="chips">
+        <button class="chip">What files do you have?</button>
+        <button class="chip">Summarize report.pdf</button>
+        <button class="chip">Which region had the best Q2 in office/budget.xlsx?</button>
+        <button class="chip">What does slide 2 of office/deck.pptx say?</button>
+        <button class="chip">Search all files for battery</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <form id="form">
+    <button id="attach" type="button" title="Upload files (or drag them onto the page)" aria-label="Upload files">📎</button>
+    <input id="file" type="file" multiple hidden>
+    <textarea id="input" rows="1" placeholder="Ask anything, e.g. “what's on page 2 of ~/Documents/report.pdf?”" autofocus></textarea>
+    <button id="send" type="submit">Send</button>
+  </form>
+  <div class="hint">Enter to send · Shift+Enter for a new line · files are read only from the folders the file server allows</div>
+</footer>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const log = $('#log'), input = $('#input'), send = $('#send'), scroller = $('#scroller');
+let sessionId = crypto.randomUUID();
+let busy = false;
+
+// ---- tiny, safe markdown renderer (HTML is escaped first) ----
+const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+function inline(s) {
+  return s
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>')
+    .replace(/(^|\W)_([^_\n]+)_(?=\W|$)/g, '$1<em>$2</em>');
+}
+function md(src) {
+  const out = [];
+  const blocks = esc(src.replace(/\r\n/g, '\n')).split(/(```[\s\S]*?```)/g);
+  for (const b of blocks) {
+    if (b.startsWith('```')) { out.push(`<pre><code>${b.replace(/^```[^\n]*\n?/, '').replace(/```$/, '')}</code></pre>`); continue; }
+    const lines = b.split('\n');
+    let i = 0;
+    while (i < lines.length) {
+      const l = lines[i];
+      if (/^\s*\|.*\|\s*$/.test(l) && /^\s*\|[\s:|-]+\|\s*$/.test(lines[i + 1] ?? '')) {
+        const row = (r) => r.trim().replace(/^\||\|$/g, '').split('|').map((c) => inline(c.trim()));
+        const head = row(l); i += 2;
+        const body = [];
+        while (i < lines.length && /^\s*\|.*\|\s*$/.test(lines[i])) body.push(row(lines[i++]));
+        out.push(`<table><thead><tr>${head.map((h) => `<th>${h}</th>`).join('')}</tr></thead><tbody>${body.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`);
+        continue;
+      }
+      const h = l.match(/^(#{1,3})\s+(.*)/);
+      if (h) { out.push(`<h${h[1].length}>${inline(h[2])}</h${h[1].length}>`); i++; continue; }
+      if (/^\s*([-*]|\d+\.)\s+/.test(l)) {
+        const ordered = /^\s*\d+\./.test(l);
+        const items = [];
+        while (i < lines.length && /^\s*([-*]|\d+\.)\s+/.test(lines[i])) items.push(inline(lines[i++].replace(/^\s*([-*]|\d+\.)\s+/, '')));
+        out.push(`<${ordered ? 'ol' : 'ul'}>${items.map((x) => `<li>${x}</li>`).join('')}</${ordered ? 'ol' : 'ul'}>`);
+        continue;
+      }
+      if (!l.trim()) { i++; continue; }
+      const para = [];
+      while (i < lines.length && lines[i].trim() && !/^(#{1,3}\s|\s*([-*]|\d+\.)\s|\s*\|)/.test(lines[i])) para.push(lines[i++]);
+      if (para.length) out.push(`<p>${inline(para.join('<br>'))}</p>`); else i++;
+    }
+  }
+  return out.join('');
+}
+
+// ---- UI helpers ----
+const atBottom = () => scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 80;
+const scroll = (force) => { if (force || atBottom()) scroller.scrollTop = scroller.scrollHeight; };
+
+function addUser(text) {
+  $('#empty')?.remove();
+  const d = document.createElement('div');
+  d.className = 'msg user';
+  d.textContent = text;
+  log.append(d);
+  scroll(true);
+}
+
+function addBot() {
+  const d = document.createElement('div');
+  d.className = 'msg bot';
+  d.innerHTML = '<div class="tools"></div><div class="body"><div class="thinking">Thinking</div></div>';
+  log.append(d);
+  scroll(true);
+  return d;
+}
+
+function argSummary(args) {
+  return Object.entries(args ?? {}).map(([k, v]) => `${k}=${typeof v === 'string' ? v : JSON.stringify(v)}`).join(' ');
+}
+
+async function ask(text) {
+  if (busy || !text.trim()) return;
+  busy = true; send.disabled = true;
+  addUser(text);
+  const bot = addBot();
+  const tools = bot.querySelector('.tools'), body = bot.querySelector('.body');
+  const toolEls = {};
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId, message: text }),
+    });
+    if (!res.ok || !res.body) throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let idx;
+      while ((idx = buf.indexOf('\n\n')) !== -1) {
+        const chunk = buf.slice(0, idx); buf = buf.slice(idx + 2);
+        const line = chunk.split('\n').find((l) => l.startsWith('data: '));
+        if (!line) continue;
+        const ev = JSON.parse(line.slice(6));
+        if (ev.type === 'tool_call') {
+          const el = document.createElement('details');
+          el.className = 'tool';
+          el.innerHTML = `<summary><span class="status"></span><span></span></summary><pre></pre>`;
+          el.querySelector('summary span:last-child').textContent = `${ev.name}  ${argSummary(ev.args)}`;
+          tools.append(el); toolEls[ev.id] = el; scroll();
+        } else if (ev.type === 'tool_result') {
+          const el = toolEls[ev.id];
+          if (el) { el.classList.add(ev.ok ? 'ok' : 'fail'); el.querySelector('pre').textContent = ev.preview + (ev.preview.length >= 400 ? '\n…' : ''); }
+        } else if (ev.type === 'answer') {
+          body.innerHTML = md(ev.text); scroll();
+        } else if (ev.type === 'error') {
+          body.innerHTML = ''; body.textContent = ev.message; bot.classList.add('error');
+        }
+      }
+    }
+  } catch (e) {
+    body.textContent = `Could not reach the chatbot server: ${e.message}`;
+    bot.classList.add('error');
+  } finally {
+    busy = false; send.disabled = false; input.focus(); scroll();
+  }
+}
+
+$('#form').addEventListener('submit', (e) => { e.preventDefault(); const t = input.value; input.value = ''; autosize(); ask(t); });
+input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); $('#form').requestSubmit(); } });
+const autosize = () => { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 200) + 'px'; };
+input.addEventListener('input', autosize);
+document.addEventListener('click', (e) => { if (e.target.classList.contains('chip')) ask(e.target.textContent); });
+$('#reset').addEventListener('click', async () => {
+  await fetch('/api/reset', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId }) }).catch(() => {});
+  sessionId = crypto.randomUUID();
+  location.reload();
+});
+
+// ---- uploads: 📎 button or drag-and-drop; files are saved on the server and can then be asked about ----
+function addNote(text, isError) {
+  $('#empty')?.remove();
+  const d = document.createElement('div');
+  d.className = 'msg note' + (isError ? ' error' : '');
+  d.textContent = text;
+  log.append(d);
+  scroll(true);
+}
+
+async function upload(files) {
+  const saved = [];
+  for (const f of files) {
+    addNote(`Uploading ${f.name}…`);
+    const note = log.lastElementChild;
+    try {
+      const r = await fetch(`/api/upload?name=${encodeURIComponent(f.name)}`, { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: f });
+      const b = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(b.error || `HTTP ${r.status}`);
+      note.textContent = `📎 Uploaded ${b.relativePath}${b.format === 'unknown' ? '' : ` (${b.format})`}`;
+      saved.push(b.relativePath);
+    } catch (e) {
+      note.textContent = `Could not upload ${f.name}: ${e.message}`;
+      note.classList.add('error');
+    }
+  }
+  if (saved.length && !input.value.trim()) {
+    input.value = saved.length === 1 ? `Summarize ${saved[0]}` : `Compare ${saved.join(' and ')}`;
+    autosize();
+  }
+  input.focus();
+}
+
+$('#attach').addEventListener('click', () => $('#file').click());
+$('#file').addEventListener('change', (e) => { upload([...e.target.files]); e.target.value = ''; });
+let dragDepth = 0;
+document.addEventListener('dragenter', (e) => { if (e.dataTransfer?.types.includes('Files')) { dragDepth++; document.body.classList.add('dragging'); } });
+document.addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; document.body.classList.remove('dragging'); } });
+document.addEventListener('dragover', (e) => { if (e.dataTransfer?.types.includes('Files')) e.preventDefault(); });
+document.addEventListener('drop', (e) => {
+  if (!e.dataTransfer?.files.length) return;
+  e.preventDefault(); dragDepth = 0; document.body.classList.remove('dragging');
+  upload([...e.dataTransfer.files]);
+});
+
+fetch('/api/status').then((r) => r.json()).then((s) => {
+  const b = $('#model');
+  b.textContent = s.provider === 'rules' ? 'offline rules mode — no LLM' : `${s.provider} · ${s.model}`;
+  if (s.provider === 'rules') { b.classList.add('offline'); b.title = 'Set ANTHROPIC_API_KEY, OPENAI_API_KEY or LLM_PROVIDER=ollama'; }
+}).catch(() => { $('#model').textContent = 'server offline'; });
+</script>
+</body>
+</html>
