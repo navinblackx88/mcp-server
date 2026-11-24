@@ -30,22 +30,13 @@ npm run chatbot:cli                          # terminal chat (/reset, /exit)
 |---|---|---|---|
 | Claude | `anthropic` | `ANTHROPIC_API_KEY` | `claude-sonnet-5-5` |
 | OpenAI | `openai` | `OPENAI_API_KEY` | `gpt-4.1-mini` |
-| Google Gemini (AI Studio) | `gemini` | `GEMINI_API_KEY` (or `GOOGLE_API_KEY`) from [aistudio.google.com/apikey](https://aistudio.google.com/apikey) | `gemini-3.6-flash` |
 | Ollama (local) | `ollama` | `ollama serve` + a model with tool calling (Qwen 2.5, Llama 3.1+, Mistral…) | `qwen2.5:7b` |
 | Any OpenAI-compatible API | `openai-compatible` | `LLM_BASE_URL`, `OPENAI_API_KEY` | set `LLM_MODEL` |
 | Offline, no LLM | `rules` | nothing | keyword rules |
 
-If `LLM_PROVIDER` isn't set, the chatbot uses Claude when `ANTHROPIC_API_KEY` is present, then OpenAI, then Gemini, and otherwise runs in **offline rules mode**. A provider that is selected but has no key also falls back to offline mode, with the reason shown in the logs and on the chat page's badge. That mode handles simple, one-step requests ("read page 2 of report.pdf", "list files in office", "find Pune in budget.xlsx") so you can try everything without a key. Instead of exporting variables, you can copy `chatbot/.env.example` to `chatbot/.env` and edit it.
+If `LLM_PROVIDER` isn't set, the chatbot uses Claude when `ANTHROPIC_API_KEY` is present, then OpenAI when `OPENAI_API_KEY` is present, and otherwise runs in **offline rules mode**. That mode handles simple, one-step requests ("read page 2 of report.pdf", "list files in office", "find Pune in budget.xlsx") so you can try everything without a key. Instead of exporting variables, you can copy `chatbot/.env.example` to `chatbot/.env` and edit it.
 
 **How it works:** each message goes to the LLM together with the six MCP tool definitions. When the LLM requests tools, the chatbot runs them through the MCP server (calls in the same round run in parallel) and sends the results back. This repeats until the LLM answers, up to `MAX_TOOL_ROUNDS` (8). Each browser tab has its own conversation, so follow-up questions work ("and what about sheet 2?"). Large tool results are cut at `MAX_TOOL_RESULT_CHARS`, and old turns are dropped after `MAX_HISTORY_MESSAGES`. The web page shows each tool call live; click one to see its result.
-
-**Check your LLM for real** with one command. It makes a live two-round tool call (model calls a tool, reads its result, answers) and reports latency and tokens:
-
-```bash
-GEMINI_API_KEY=your-key npm run llm:check        # or ANTHROPIC_API_KEY / OPENAI_API_KEY
-```
-
-**Gemini notes.** The adapter uses Google's official `@google/genai` SDK with native function calling. It sends the model's thought signatures back with each tool result (Gemini 3 requires this for multi-step tool use), defaults the output limit to 8,192 tokens (thinking counts toward it), and keeps Gemini's own default temperature unless you set `LLM_TEMPERATURE`. Transient 429/5xx errors are retried 3 times. Other models: `gemini-3.8-flash`, `gemini-3.5-flash-lite`, `gemini-3.1-pro-preview` (see Google's model list; names change often).
 
 To add another LLM, implement the four methods listed in `chatbot/src/llm/index.js`.
 
@@ -73,7 +64,7 @@ Files live on a Railway volume mounted at `/data`. On first boot it's seeded wit
 ### Quickest: one service, all-in-one
 
 1. Railway → **New Project** → **Deploy from GitHub repo** → pick this repo. Leave **Root Directory** empty.
-2. The service → **Variables**: `CHATBOT_PASSWORD=…` and `GEMINI_API_KEY=…` (or `ANTHROPIC_API_KEY` / `OPENAI_API_KEY`).
+2. The service → **Variables**: `CHATBOT_PASSWORD=…` and `ANTHROPIC_API_KEY=…` (or `OPENAI_API_KEY`).
 3. Right-click the service → **Attach volume**, mount path `/data` (without it, uploads are lost on every redeploy).
 4. Settings → Networking → **Generate Domain**. Health check path: `/health`.
 
@@ -103,7 +94,7 @@ railway config apply                          # creates 3 services + the volume
 railway variable set FILE_SERVER_TOKEN=$(openssl rand -hex 32) --service file-server
 railway variable set MCP_AUTH_TOKEN=$(openssl rand -hex 32)    --service mcp-server
 railway variable set CHATBOT_PASSWORD='choose-a-password'      --service chatbot
-railway variable set GEMINI_API_KEY=your-ai-studio-key         --service chatbot   # or ANTHROPIC_API_KEY / OPENAI_API_KEY
+railway variable set ANTHROPIC_API_KEY=sk-ant-...              --service chatbot   # or OPENAI_API_KEY / LLM_PROVIDER=ollama + LLM_BASE_URL
 
 railway domain --service chatbot              # public https URL for the chat
 ```

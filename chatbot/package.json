@@ -6,12 +6,10 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "cli": "node src/cli.js",
-    "llm:check": "node src/llm-check.js"
+    "cli": "node src/cli.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.8.0",
-    "@google/genai": "^3.6.1",
     "@modelcontextprotocol/sdk": "^1.32.0",
     "express": "^5.1.0",
     "openai": "^7.56.0"

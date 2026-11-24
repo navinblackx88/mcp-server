@@ -12,14 +12,13 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Agent } from './agent.js';
 import { config } from './config.js';
-import { createProviderSafe } from './llm/index.js';
+import { createProvider } from './llm/index.js';
 import { connectMcp } from './mcp.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MAX_UPLOAD_MB = Number(process.env.MAX_UPLOAD_MB || 50);
 
-const { provider, warning: providerWarning } = createProviderSafe(config);
-if (providerWarning) console.warn(`WARNING: ${providerWarning}`);
+const provider = createProvider(config);
 let mcp = null;
 let agent = null;
 let mcpError = null;
@@ -81,7 +80,6 @@ app.get('/api/status', (_req, res) => {
   res.json({
     provider: provider.name,
     model: provider.model,
-    warning: providerWarning,
     mcp: mcp ? 'ready' : 'connecting',
     tools: mcp ? mcp.tools.map((t) => t.name) : [],
     uploads: true,
@@ -165,11 +163,8 @@ function listen(app, port, host, onReady) {
 
 function friendlyError(e) {
   const status = e.status ?? e.response?.status;
-  if (status === 401 || (status === 400 && /api key/i.test(e.message)) || (status === 403 && /api key|permission/i.test(e.message))) {
-    return `The ${provider.name} API key was rejected (${status}). Check your API key${provider.name === 'gemini' ? ' (create one at aistudio.google.com/apikey)' : ''}.`;
-  }
-  if (status === 404) return `Model "${provider.model}" was not found (404). Set LLM_MODEL to a model your account can use${provider.name === 'gemini' ? ', e.g. gemini-3.6-flash' : ''}.`;
-  if (status === 503 || status === 500) return `The ${provider.name} service is busy or unavailable (${status}). Try again in a moment.`;
+  if (status === 401) return `The ${provider.name} API key was rejected (401). Check your API key.`;
+  if (status === 404) return `Model "${provider.model}" was not found (404). Set LLM_MODEL to a model your account can use.`;
   if (status === 429) return 'Rate limited by the LLM provider (429). Wait a moment and try again.';
   if (e.code === 'ECONNREFUSED' || /ECONNREFUSED|fetch failed|Connection error/i.test(e.message)) {
     return `Could not reach the LLM at ${config.baseURL ?? provider.name}. ${provider.name === 'ollama' ? 'Is Ollama running (ollama serve)?' : 'Check your network.'}`;
@@ -181,7 +176,7 @@ const server = listen(app, config.port, config.host, (addr) => {
   console.log(`Chatbot on http://${addr}`);
   console.log(`LLM: ${provider.name} (${provider.model})${config.baseURL ? ` at ${config.baseURL}` : ''}`);
   console.log(`MCP: ${config.mcpServerUrl || 'local stdio'} · Login: ${config.password ? 'on' : 'OFF'} · Rate limit: ${config.rateLimitPerMinute}/min`);
-  if (provider.name === 'rules') console.log('No LLM configured: running in offline rules mode. Set GEMINI_API_KEY, ANTHROPIC_API_KEY, OPENAI_API_KEY or LLM_PROVIDER=ollama.');
+  if (provider.name === 'rules') console.log('No LLM configured: running in offline rules mode. Set ANTHROPIC_API_KEY, OPENAI_API_KEY or LLM_PROVIDER=ollama.');
   if (!config.password && config.host !== '127.0.0.1') console.log('WARNING: CHATBOT_PASSWORD is not set; anyone with the URL can use this chatbot (and your LLM quota).');
 });
 

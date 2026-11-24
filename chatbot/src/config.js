@@ -8,22 +8,17 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 try { process.loadEnvFile?.(path.join(__dirname, '../.env')); } catch { /* no .env file */ }
 const env = process.env;
 
-// LLM_PROVIDER: anthropic | openai | gemini | ollama | rules. If unset, picked from the API keys
-// present; with no key it falls back to "rules" (offline, keyword-based, no LLM).
-const GEMINI_KEY = env.GEMINI_API_KEY || env.GOOGLE_API_KEY || '';
+// LLM_PROVIDER: anthropic | openai | ollama | rules. If unset, picked from the API keys present;
+// with no key it falls back to "rules" (offline, keyword-based, no LLM).
 function pickProvider() {
-  const p = (env.LLM_PROVIDER || '').toLowerCase();
-  if (['google', 'aistudio', 'ai-studio', 'google-ai-studio'].includes(p)) return 'gemini';
-  if (p) return p;
+  if (env.LLM_PROVIDER) return env.LLM_PROVIDER.toLowerCase();
   if (env.ANTHROPIC_API_KEY) return 'anthropic';
   if (env.OPENAI_API_KEY) return 'openai';
-  if (GEMINI_KEY) return 'gemini';
   return 'rules';
 }
 
 const provider = pickProvider();
-const DEFAULT_MODELS = { anthropic: 'claude-sonnet-5-5', openai: 'gpt-4.1-mini', gemini: 'gemini-3.6-flash', ollama: 'qwen2.5:7b', rules: 'keyword-rules' };
-const API_KEYS = { anthropic: env.ANTHROPIC_API_KEY, gemini: GEMINI_KEY, ollama: env.OPENAI_API_KEY || 'ollama' };
+const DEFAULT_MODELS = { anthropic: 'claude-sonnet-5-5', openai: 'gpt-4.1-mini', ollama: 'qwen2.5:7b', rules: 'keyword-rules' };
 
 const urlFromParts = (host, port) => `http://${host.includes(':') ? `[${host}]` : host}:${port}`;
 
@@ -40,11 +35,9 @@ export const config = {
   model: env.LLM_MODEL || DEFAULT_MODELS[provider],
   // Base URL override: any OpenAI-compatible server (Ollama, LM Studio, vLLM, Groq, Azure…) or an Anthropic proxy.
   baseURL: env.LLM_BASE_URL || (provider === 'ollama' ? 'http://localhost:11434/v1' : undefined),
-  apiKey: provider in API_KEYS ? API_KEYS[provider] : env.OPENAI_API_KEY,
-  // Gemini's thinking tokens count toward the output limit, so it gets more room by default.
-  maxTokens: Number(env.LLM_MAX_TOKENS || (provider === 'gemini' ? 8192 : 2048)),
-  // Gemini: keep the model's own default temperature unless you set one.
-  temperature: env.LLM_TEMPERATURE !== undefined && env.LLM_TEMPERATURE !== '' ? Number(env.LLM_TEMPERATURE) : provider === 'gemini' ? undefined : 0.2,
+  apiKey: provider === 'anthropic' ? env.ANTHROPIC_API_KEY : provider === 'ollama' ? env.OPENAI_API_KEY || 'ollama' : env.OPENAI_API_KEY,
+  maxTokens: Number(env.LLM_MAX_TOKENS || 2048),
+  temperature: env.LLM_TEMPERATURE === undefined ? 0.2 : Number(env.LLM_TEMPERATURE),
   maxToolRounds: Number(env.MAX_TOOL_ROUNDS || 8),       // tool-call rounds per user message
   maxToolResultChars: Number(env.MAX_TOOL_RESULT_CHARS || 15000),
   maxHistoryMessages: Number(env.MAX_HISTORY_MESSAGES || 40),

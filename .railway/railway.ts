@@ -104,7 +104,6 @@ export default defineRailway((ctx) => {
       LLM_MODEL: preserve(),
       ANTHROPIC_API_KEY: preserve(),
       OPENAI_API_KEY: preserve(),
-      GEMINI_API_KEY: preserve(), // Google AI Studio key (aistudio.google.com/apikey)
     },
   });
 

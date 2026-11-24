@@ -17,8 +17,7 @@
     "chatbot": "npm run start -w chatbot",
     "chatbot:cli": "npm run cli -w chatbot",
     "railway:check": "tsc -p .railway && node .railway/inspect.mjs",
-    "start": "node start.js",
-    "llm:check": "node chatbot/src/llm-check.js"
+    "start": "node start.js"
   },
   "devDependencies": {
     "railway": "^3.17.0",
